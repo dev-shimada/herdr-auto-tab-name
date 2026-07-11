@@ -34,7 +34,12 @@ const res = spawnSync(process.execPath, [path.join(root, "sync.mts")], {
   },
 });
 
-assert.equal(res.status, 0, `sync.mts failed:\n${res.stderr}`);
+assert.equal(
+  res.status,
+  0,
+  `sync.mts failed (status: ${res.status}, spawn error: ${res.error ?? "none"})\n` +
+    `stdout:\n${res.stdout}\nstderr:\n${res.stderr}`,
+);
 
 const renames = fs
   .readFileSync(renameLog, "utf8")
