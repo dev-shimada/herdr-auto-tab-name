@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Fake `herdr` binary for tests. Serves canned JSON for the read commands
 // sync.mts issues and records `tab rename` calls to $STUB_RENAME_LOG.
+// The .mjs extension makes Node treat this as ESM even though the file is
+// executed directly via its shebang (package.json sets no "type").
 import fs from "node:fs";
 
 const args = process.argv.slice(2);

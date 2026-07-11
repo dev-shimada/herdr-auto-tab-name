@@ -24,7 +24,7 @@ const res = spawnSync(process.execPath, [path.join(root, "sync.mts")], {
   encoding: "utf8",
   env: {
     ...process.env,
-    HERDR_BIN_PATH: path.join(root, "tests", "stub", "herdr"),
+    HERDR_BIN_PATH: path.join(root, "tests", "stub", "herdr.mjs"),
     HERDR_PLUGIN_STATE_DIR: stateDir,
     HERDR_PLUGIN_CONFIG_DIR: configDir,
     STUB_RENAME_LOG: renameLog,
