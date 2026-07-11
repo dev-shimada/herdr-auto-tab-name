@@ -1,16 +1,15 @@
 name: Release
 
-# Push a tag like v0.2.0 and this workflow does the rest:
-#   1. sets `version` in herdr-plugin.toml and package.json to the tag on main
-#   2. runs the same checks as CI
-#   3. commits the bump to main and re-points the tag at that commit,
-#      so `herdr plugin install --ref vX.Y.Z` sees the right version
-#   4. creates a GitHub release with generated notes
+# Publishes a GitHub release when a version tag is pushed. The version bump
+# itself happens locally via scripts/release.sh (bump, commit, tag, push),
+# so this workflow never writes to the protected main branch — it only
+# validates the tag and creates the release:
+#   1. checks the tagged commit is on main and its files match the tag version
+#   2. runs the same check suite as CI
+#   3. creates a GitHub release with generated notes
 #
-# Tags must point at the tip of main (verified by the first step), since
-# what gets released is main plus the version bump. Re-pushing an existing
-# tag is safe: every step is idempotent (no version change -> no commit,
-# release skipped if it already exists).
+# Re-pushing an existing tag is safe: release creation is skipped when the
+# release already exists.
 
 on:
   push:
@@ -25,7 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          ref: main
           fetch-depth: 0
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -33,55 +31,32 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Verify the tag points at the tip of main
+      - name: Verify the tag is on main and versions match
         run: |
-          TAG_COMMIT="$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
-          MAIN_HEAD="$(git rev-parse HEAD)"
-          if [ "$TAG_COMMIT" != "$MAIN_HEAD" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME points at $TAG_COMMIT, but main is at $MAIN_HEAD. This workflow releases the tip of main; retag the current main head."
+          git fetch origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on main. Cut releases with scripts/release.sh."
             exit 1
           fi
 
-      - name: Bump versions to match tag
-        run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-
-          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" herdr-plugin.toml
-
-          current="$(node -p "require('./package.json').version")"
-          if [ "$current" != "$VERSION" ]; then
-            npm version "$VERSION" --no-git-tag-version
+          MANIFEST="$(node -e '
+            const toml = require("node:fs").readFileSync("herdr-plugin.toml", "utf8");
+            const m = toml.match(/^\s*version\s*=\s*"([^"]*)"/m);
+            if (!m) {
+              console.error("could not parse the version field from herdr-plugin.toml");
+              process.exit(1);
+            }
+            process.stdout.write(m[1]);
+          ')"
+          if [ "$MANIFEST" != "$VERSION" ]; then
+            echo "::error::herdr-plugin.toml version ($MANIFEST) does not match tag $GITHUB_REF_NAME. Cut releases with scripts/release.sh instead of tagging manually."
+            exit 1
           fi
 
-          git diff --stat
-
-      # Same suite as CI, run against the bumped working tree, so a release
-      # cannot be cut from a state CI would reject.
+      # Same suite as CI (includes the package.json/manifest version
+      # consistency check), so a broken state cannot be released.
       - uses: ./.github/actions/checks
-
-      - name: Commit bump and re-point tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          if ! git diff --quiet; then
-            git add herdr-plugin.toml package.json package-lock.json
-            git commit -m "chore(release): v$VERSION"
-            git push origin main
-          fi
-
-          # Re-point the tag only when the bump commit moved main past it.
-          # Annotated tags are recreated with their message; signatures
-          # cannot be carried over (the runner has no signing key).
-          if [ "$(git rev-parse "$GITHUB_REF_NAME^{commit}")" != "$(git rev-parse HEAD)" ]; then
-            if [ "$(git cat-file -t "$GITHUB_REF_NAME")" = "tag" ]; then
-              git tag -f -a -m "$(git for-each-ref "refs/tags/$GITHUB_REF_NAME" --format='%(contents)')" "$GITHUB_REF_NAME"
-            else
-              git tag -f "$GITHUB_REF_NAME"
-            fi
-            git push -f origin "refs/tags/$GITHUB_REF_NAME"
-          fi
 
       - name: Create GitHub release
         env:

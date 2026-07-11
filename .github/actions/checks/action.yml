@@ -1,54 +1,21 @@
 name: Project checks
 description: >
-  The full check suite, shared by CI and the release workflow: type check,
-  functional smoke test, shell hook syntax, and manifest/version validation.
-  A composite action (not a reusable workflow) so the release job can run it
-  in-place against the version-bumped working tree before pushing.
+  Runs the shared check suite (scripts/checks.sh) after provisioning the
+  tools it needs, so CI and the release workflow validate exactly what the
+  local release script validates. A composite action (not a reusable
+  workflow) so the release job can run it in-place against its working tree.
 
 runs:
   using: composite
   steps:
-    - name: Type check
+    - name: Install dependencies
       shell: bash
-      run: |
-        npm ci
-        npm run check
+      run: npm ci
 
-    - name: Smoke test (sync.mts against stub herdr)
+    - name: Provision check tooling
       shell: bash
-      run: node tests/smoke.mjs
+      run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh
 
-    - name: Shell hook syntax
+    - name: Run check suite
       shell: bash
-      run: |
-        sudo apt-get update -qq && sudo apt-get install -y -qq zsh
-        bash -n shell/hook.bash
-        zsh -n shell/hook.zsh
-
-    - name: Validate manifest and version consistency
-      shell: bash
-      run: |
-        python3 - <<'EOF'
-        import json, re, tomllib
-
-        with open("herdr-plugin.toml", "rb") as f:
-            manifest = tomllib.load(f)
-
-        for key in ("id", "name", "version", "min_herdr_version"):
-            assert manifest.get(key), f"herdr-plugin.toml: missing required field {key!r}"
-        assert re.fullmatch(r"[A-Za-z0-9._:-]+", manifest["id"]), "invalid plugin id"
-
-        for hook in manifest.get("events", []):
-            assert hook.get("on") and hook.get("command"), f"invalid event hook: {hook}"
-        for action in manifest.get("actions", []):
-            assert action.get("id") and action.get("command"), f"invalid action: {action}"
-            assert "." not in action["id"], "action ids must not contain dots"
-
-        with open("package.json") as f:
-            pkg = json.load(f)
-        assert pkg["version"] == manifest["version"], (
-            f"version mismatch: package.json {pkg['version']} != "
-            f"herdr-plugin.toml {manifest['version']}"
-        )
-        print(f"manifest OK (version {manifest['version']})")
-        EOF
+      run: scripts/checks.sh --strict

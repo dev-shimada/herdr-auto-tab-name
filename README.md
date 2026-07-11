@@ -127,16 +127,19 @@ node tests/smoke.mjs # functional test against a stub herdr binary
 
 ### Releasing
 
-Push a semver tag and CD does the rest — no manual version bumping:
+One command, no manual version editing:
 
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+scripts/release.sh 0.2.0
 ```
 
-The release workflow sets `version` in `herdr-plugin.toml` / `package.json`
-to match the tag, commits that to `main`, re-points the tag at the bump
-commit, and creates a GitHub release. Tags are expected to be cut from
-`main`.
+The script bumps `version` in `herdr-plugin.toml` / `package.json` on the
+tip of `main`, runs the checks, commits, tags `v0.2.0`, and pushes the
+commit and tag together. The Release workflow then validates the tag
+(on `main`, versions match), re-runs the check suite, and publishes a
+GitHub release with generated notes. Requires push access to `main`
+(the repository admin bypasses the branch ruleset; CI itself never
+writes to `main`).
 
 State lives in `HERDR_PLUGIN_STATE_DIR/labels.json` (the labels the plugin
 set, used to tell its own labels apart from yours). Deleting it is safe; the
