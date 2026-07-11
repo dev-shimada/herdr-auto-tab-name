@@ -73,8 +73,17 @@ jobs:
             git push origin main
           fi
 
-          git tag -f "$GITHUB_REF_NAME"
-          git push -f origin "refs/tags/$GITHUB_REF_NAME"
+          # Re-point the tag only when the bump commit moved main past it.
+          # Annotated tags are recreated with their message; signatures
+          # cannot be carried over (the runner has no signing key).
+          if [ "$(git rev-parse "$GITHUB_REF_NAME^{commit}")" != "$(git rev-parse HEAD)" ]; then
+            if [ "$(git cat-file -t "$GITHUB_REF_NAME")" = "tag" ]; then
+              git tag -f -a -m "$(git for-each-ref "refs/tags/$GITHUB_REF_NAME" --format='%(contents)')" "$GITHUB_REF_NAME"
+            else
+              git tag -f "$GITHUB_REF_NAME"
+            fi
+            git push -f origin "refs/tags/$GITHUB_REF_NAME"
+          fi
 
       - name: Create GitHub release
         env:
