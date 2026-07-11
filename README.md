@@ -121,8 +121,22 @@ The logic lives in `sync.mts`. Type checking is dev-only tooling
 
 ```bash
 npm install
-npm run check   # tsc --noEmit with erasableSyntaxOnly
+npm run check        # tsc --noEmit with erasableSyntaxOnly
+node tests/smoke.mjs # functional test against a stub herdr binary
 ```
+
+### Releasing
+
+Push a semver tag and CD does the rest — no manual version bumping:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+The release workflow sets `version` in `herdr-plugin.toml` / `package.json`
+to match the tag, commits that to `main`, re-points the tag at the bump
+commit, and creates a GitHub release. Tags are expected to be cut from
+`main`.
 
 State lives in `HERDR_PLUGIN_STATE_DIR/labels.json` (the labels the plugin
 set, used to tell its own labels apart from yours). Deleting it is safe; the

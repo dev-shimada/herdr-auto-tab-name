@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+// Fake `herdr` binary for tests. Serves canned JSON for the read commands
+// sync.mts issues and records `tab rename` calls to $STUB_RENAME_LOG.
+// The .mjs extension makes Node treat this as ESM even though the file is
+// executed directly via its shebang (package.json sets no "type").
+import fs from "node:fs";
+
+const args = process.argv.slice(2);
+const cmd = args.join(" ");
+const reply = (result) =>
+  process.stdout.write(`${JSON.stringify({ id: "stub", result })}\n`);
+
+if (cmd === "workspace list") {
+  reply({ type: "workspace_list", workspaces: [{ workspace_id: "w1" }] });
+} else if (cmd === "tab list --workspace w1") {
+  reply({
+    type: "tab_list",
+    tabs: [
+      { tab_id: "t1", label: "1" }, // default label -> should be renamed
+      { tab_id: "t2", label: "custom" }, // manual label -> must be skipped
+      { tab_id: "t3", label: "oldname" }, // plugin-owned (seeded state) -> renamed
+    ],
+  });
+} else if (cmd === "pane list --workspace w1") {
+  reply({
+    type: "pane_list",
+    panes: [
+      { tab_id: "t1", focused: true, cwd: "/tmp/x", foreground_cwd: "/tmp/projects/alpha" },
+      { tab_id: "t2", focused: false, cwd: "/tmp/projects/beta", foreground_cwd: null },
+      { tab_id: "t3", focused: false, cwd: "/tmp/projects/gamma", foreground_cwd: null },
+    ],
+  });
+} else if (args[0] === "tab" && args[1] === "rename") {
+  if (!process.env.STUB_RENAME_LOG) {
+    process.stderr.write("stub herdr: STUB_RENAME_LOG is not set\n");
+    process.exit(1);
+  }
+  fs.appendFileSync(process.env.STUB_RENAME_LOG, `${args[2]} ${args[3]}\n`);
+  reply({ type: "ok" });
+} else {
+  process.stderr.write(`stub herdr: unexpected command: ${cmd}\n`);
+  process.exit(1);
+}
