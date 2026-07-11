@@ -33,6 +33,7 @@ jobs:
 
       - name: Verify the tag is on main and versions match
         run: |
+          git fetch origin main
           if ! git merge-base --is-ancestor HEAD origin/main; then
             echo "::error::Tag $GITHUB_REF_NAME is not on main. Cut releases with scripts/release.sh."
             exit 1

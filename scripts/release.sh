@@ -47,6 +47,7 @@ node -e '
 ' "$VERSION"
 npm version "$VERSION" --no-git-tag-version
 
+npm ci
 npm run check
 node tests/smoke.mjs
 
