@@ -1,0 +1,55 @@
+id = "dev-shimada.auto-tab-name"
+name = "Auto Tab Name"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Automatically set each tab's label to the directory name of its current working directory."
+platforms = ["linux", "macos", "windows"]
+
+[[actions]]
+id = "sync"
+title = "Sync tab names now"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "tab.created"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "tab.focused"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "tab.moved"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "pane.created"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "pane.closed"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "pane.exited"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "pane.focused"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "pane.moved"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "workspace.focused"
+command = ["node", "sync.mjs"]
+
+[[events]]
+on = "worktree.opened"
+command = ["node", "sync.mjs"]
