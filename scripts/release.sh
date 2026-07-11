@@ -48,8 +48,7 @@ node -e '
 npm version "$VERSION" --no-git-tag-version
 
 npm ci
-npm run check
-node tests/smoke.mjs
+scripts/checks.sh
 
 git add herdr-plugin.toml package.json package-lock.json
 git commit -m "chore(release): $TAG"
