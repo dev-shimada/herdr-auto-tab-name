@@ -1,6 +1,6 @@
 id = "dev-shimada.auto-tab-name"
 name = "Auto Tab Name"
-version = "0.1.0"
+version = "1.0.1"
 min_herdr_version = "0.7.0"
 description = "Automatically set each tab's label to the directory name of its current working directory."
 platforms = ["linux", "macos", "windows"]
