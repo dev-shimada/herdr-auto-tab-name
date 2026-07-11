@@ -7,9 +7,10 @@ name: Release
 #      so `herdr plugin install --ref vX.Y.Z` sees the right version
 #   4. creates a GitHub release with generated notes
 #
-# Tags must be cut from main (verified by the first step). Re-pushing an
-# existing tag is safe: every step is idempotent (no version change -> no
-# commit, release skipped if it already exists).
+# Tags must point at the tip of main (verified by the first step), since
+# what gets released is main plus the version bump. Re-pushing an existing
+# tag is safe: every step is idempotent (no version change -> no commit,
+# release skipped if it already exists).
 
 on:
   push:
@@ -32,11 +33,12 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Verify the tag points at a commit on main
+      - name: Verify the tag points at the tip of main
         run: |
           TAG_COMMIT="$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
-          if ! git merge-base --is-ancestor "$TAG_COMMIT" HEAD; then
-            echo "::error::Tag $GITHUB_REF_NAME points at $TAG_COMMIT, which is not reachable from main. Cut release tags from main."
+          MAIN_HEAD="$(git rev-parse HEAD)"
+          if [ "$TAG_COMMIT" != "$MAIN_HEAD" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME points at $TAG_COMMIT, but main is at $MAIN_HEAD. This workflow releases the tip of main; retag the current main head."
             exit 1
           fi
 

@@ -33,7 +33,7 @@ jobs:
       - name: Validate manifest and version consistency
         run: |
           python3 - <<'EOF'
-          import json, re, sys, tomllib
+          import json, re, tomllib
 
           with open("herdr-plugin.toml", "rb") as f:
               manifest = tomllib.load(f)
