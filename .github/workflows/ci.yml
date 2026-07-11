@@ -22,43 +22,4 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
 
-      - name: Type check
-        run: |
-          npm ci
-          npm run check
-
-      - name: Smoke test (sync.mts against stub herdr)
-        run: node tests/smoke.mjs
-
-      - name: Shell hook syntax
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq zsh
-          bash -n shell/hook.bash
-          zsh -n shell/hook.zsh
-
-      - name: Validate manifest and version consistency
-        run: |
-          python3 - <<'EOF'
-          import json, re, tomllib
-
-          with open("herdr-plugin.toml", "rb") as f:
-              manifest = tomllib.load(f)
-
-          for key in ("id", "name", "version", "min_herdr_version"):
-              assert manifest.get(key), f"herdr-plugin.toml: missing required field {key!r}"
-          assert re.fullmatch(r"[A-Za-z0-9._:-]+", manifest["id"]), "invalid plugin id"
-
-          for hook in manifest.get("events", []):
-              assert hook.get("on") and hook.get("command"), f"invalid event hook: {hook}"
-          for action in manifest.get("actions", []):
-              assert action.get("id") and action.get("command"), f"invalid action: {action}"
-              assert "." not in action["id"], "action ids must not contain dots"
-
-          with open("package.json") as f:
-              pkg = json.load(f)
-          assert pkg["version"] == manifest["version"], (
-              f"version mismatch: package.json {pkg['version']} != "
-              f"herdr-plugin.toml {manifest['version']}"
-          )
-          print(f"manifest OK (version {manifest['version']})")
-          EOF
+      - uses: ./.github/actions/checks

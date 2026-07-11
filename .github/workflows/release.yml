@@ -56,11 +56,9 @@ jobs:
 
           git diff --stat
 
-      - name: Check
-        run: |
-          npm ci
-          npm run check
-          node tests/smoke.mjs
+      # Same suite as CI, run against the bumped working tree, so a release
+      # cannot be cut from a state CI would reject.
+      - uses: ./.github/actions/checks
 
       - name: Commit bump and re-point tag
         run: |
