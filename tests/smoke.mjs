@@ -9,6 +9,9 @@ import { fileURLToPath } from "node:url";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "auto-tab-name-test-"));
+// Clean up even when an assertion throws, so failed runs don't accumulate
+// stale temp directories.
+process.on("exit", () => fs.rmSync(tmp, { recursive: true, force: true }));
 const stateDir = path.join(tmp, "state");
 const configDir = path.join(tmp, "config");
 fs.mkdirSync(stateDir);
@@ -47,5 +50,4 @@ assert.deepEqual(
 const state = JSON.parse(fs.readFileSync(path.join(stateDir, "labels.json"), "utf8"));
 assert.deepEqual(state, { t1: "alpha", t3: "gamma" });
 
-fs.rmSync(tmp, { recursive: true, force: true });
 console.log("smoke test OK");
