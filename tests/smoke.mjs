@@ -33,7 +33,11 @@ const res = spawnSync(process.execPath, [path.join(root, "sync.mts")], {
 
 assert.equal(res.status, 0, `sync.mts failed:\n${res.stderr}`);
 
-const renames = fs.readFileSync(renameLog, "utf8").trim().split("\n").sort();
+const renames = fs
+  .readFileSync(renameLog, "utf8")
+  .split("\n")
+  .filter((line) => line !== "")
+  .sort();
 assert.deepEqual(
   renames,
   ["t1 alpha", "t3 gamma"],

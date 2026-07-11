@@ -31,6 +31,10 @@ if (cmd === "workspace list") {
     ],
   });
 } else if (args[0] === "tab" && args[1] === "rename") {
+  if (!process.env.STUB_RENAME_LOG) {
+    process.stderr.write("stub herdr: STUB_RENAME_LOG is not set\n");
+    process.exit(1);
+  }
   fs.appendFileSync(process.env.STUB_RENAME_LOG, `${args[2]} ${args[3]}\n`);
   reply({ type: "ok" });
 } else {
