@@ -1,0 +1,74 @@
+name: Release
+
+# Push a tag like v0.2.0 and this workflow does the rest:
+#   1. sets `version` in herdr-plugin.toml and package.json to the tag on main
+#   2. runs the same checks as CI
+#   3. commits the bump to main and re-points the tag at that commit,
+#      so `herdr plugin install --ref vX.Y.Z` sees the right version
+#   4. creates a GitHub release with generated notes
+#
+# Assumes tags are cut from main. Re-pushing an existing tag is safe: every
+# step is idempotent (no version change -> no commit, release skipped if it
+# already exists).
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Bump versions to match tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" herdr-plugin.toml
+
+          current="$(node -p "require('./package.json').version")"
+          if [ "$current" != "$VERSION" ]; then
+            npm version "$VERSION" --no-git-tag-version
+          fi
+
+          git diff --stat
+
+      - name: Check
+        run: |
+          npm ci
+          npm run check
+          node tests/smoke.mjs
+
+      - name: Commit bump and re-point tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if ! git diff --quiet; then
+            git add herdr-plugin.toml package.json package-lock.json
+            git commit -m "chore(release): v$VERSION"
+            git push origin main
+          fi
+
+          git tag -f "$GITHUB_REF_NAME"
+          git push -f origin "refs/tags/$GITHUB_REF_NAME"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
