@@ -1,0 +1,12 @@
+{
+  "name": "herdr-auto-tab-name",
+  "private": true,
+  "description": "Dev-only tooling for type checking. The plugin itself has no runtime dependencies and no build step; herdr runs sync.mts directly via Node's type stripping.",
+  "scripts": {
+    "check": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

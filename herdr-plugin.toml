@@ -8,48 +8,48 @@ platforms = ["linux", "macos", "windows"]
 [[actions]]
 id = "sync"
 title = "Sync tab names now"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "tab.created"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "tab.focused"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "tab.moved"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "pane.created"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "pane.closed"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "pane.exited"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "pane.focused"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "pane.moved"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "pane.agent_status_changed"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "workspace.focused"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]
 
 [[events]]
 on = "worktree.opened"
-command = ["node", "sync.mjs"]
+command = ["node", "sync.mts"]

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Auto Tab Name: set each tab's label to the directory name of its current
-// working directory. Runs as a herdr plugin event hook / action; requires no
-// dependencies beyond Node itself.
+// working directory. Runs as a herdr plugin event hook / action.
+//
+// This is TypeScript executed directly by Node's type stripping (Node 22.18+),
+// so the source file is also the artifact — no build step. Only erasable TS
+// syntax is used (no enums/namespaces).
 //
 // A tab's "current directory" is resolved from the tab's focused pane when
 // herdr reports one, otherwise its first pane: `foreground_cwd` (the cwd of
@@ -17,10 +20,34 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+interface WorkspaceInfo {
+  workspace_id: string;
+}
+
+interface TabInfo {
+  tab_id: string;
+  label: string;
+}
+
+interface PaneInfo {
+  tab_id: string;
+  focused: boolean;
+  cwd?: string | null;
+  foreground_cwd?: string | null;
+}
+
+interface Config {
+  overwriteManual: boolean;
+  maxLength: number;
+}
+
+// Labels this plugin set earlier, keyed by tab id.
+type OwnedLabels = Record<string, string>;
+
 const HERDR = process.env.HERDR_BIN_PATH || "herdr";
 const DEFAULT_LABEL = /^[0-9]+$/;
 
-function call(args) {
+function call<T>(args: string[]): T {
   const res = spawnSync(HERDR, args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -32,36 +59,41 @@ function call(args) {
     const detail = (res.stderr || res.stdout || "").trim();
     throw new Error(`herdr ${args.join(" ")} exited ${res.status}: ${detail}`);
   }
-  const parsed = JSON.parse(res.stdout);
-  return parsed && typeof parsed === "object" && "result" in parsed
-    ? parsed.result
-    : parsed;
+  const parsed: unknown = JSON.parse(res.stdout);
+  const envelope = parsed as { result?: T };
+  return envelope && typeof envelope === "object" && "result" in envelope
+    ? (envelope.result as T)
+    : (parsed as T);
 }
 
-function readJson(file, fallback) {
+function readJson<T>(file: string, fallback: T): T {
   try {
-    return JSON.parse(fs.readFileSync(file, "utf8"));
+    return JSON.parse(fs.readFileSync(file, "utf8")) as T;
   } catch {
     return fallback;
   }
 }
 
-function writeJsonAtomic(file, value) {
+function writeJsonAtomic(file: string, value: unknown): void {
   const tmp = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`);
   fs.renameSync(tmp, file);
 }
 
-function loadConfig() {
+function loadConfig(): Config {
   const dir = process.env.HERDR_PLUGIN_CONFIG_DIR;
-  const config = dir ? readJson(path.join(dir, "config.json"), {}) : {};
+  const config = dir
+    ? readJson<Record<string, unknown>>(path.join(dir, "config.json"), {})
+    : {};
   return {
     overwriteManual: config.overwrite_manual === true,
-    maxLength: Number.isInteger(config.max_length) ? config.max_length : 0,
+    maxLength: Number.isInteger(config.max_length)
+      ? (config.max_length as number)
+      : 0,
   };
 }
 
-function labelForCwd(cwd, maxLength) {
+function labelForCwd(cwd: string | null, maxLength: number): string | null {
   if (!cwd) {
     return null;
   }
@@ -76,7 +108,7 @@ function labelForCwd(cwd, maxLength) {
   return label;
 }
 
-function cwdForTab(tabId, panes) {
+function cwdForTab(tabId: string, panes: PaneInfo[]): string | null {
   const tabPanes = panes.filter((pane) => pane.tab_id === tabId);
   if (tabPanes.length === 0) {
     return null;
@@ -85,20 +117,26 @@ function cwdForTab(tabId, panes) {
   return pane.foreground_cwd || pane.cwd || null;
 }
 
-function main() {
+function main(): void {
   const config = loadConfig();
   const stateDir = process.env.HERDR_PLUGIN_STATE_DIR;
   const stateFile = stateDir ? path.join(stateDir, "labels.json") : null;
-  // Labels this plugin set earlier, keyed by tab id. A tab whose current
-  // label differs from this record was renamed by the user and is skipped.
-  const ownedLabels = stateFile ? readJson(stateFile, {}) : {};
-  const nextOwnedLabels = {};
+  // A tab whose current label differs from this record was renamed by the
+  // user and is skipped.
+  const ownedLabels: OwnedLabels = stateFile
+    ? readJson<OwnedLabels>(stateFile, {})
+    : {};
+  const nextOwnedLabels: OwnedLabels = {};
 
-  const workspaces = call(["workspace", "list"]).workspaces ?? [];
+  const workspaces =
+    call<{ workspaces?: WorkspaceInfo[] }>(["workspace", "list"]).workspaces ??
+    [];
   for (const workspace of workspaces) {
     const wsArgs = ["--workspace", workspace.workspace_id];
-    const tabs = call(["tab", "list", ...wsArgs]).tabs ?? [];
-    const panes = call(["pane", "list", ...wsArgs]).panes ?? [];
+    const tabs =
+      call<{ tabs?: TabInfo[] }>(["tab", "list", ...wsArgs]).tabs ?? [];
+    const panes =
+      call<{ panes?: PaneInfo[] }>(["pane", "list", ...wsArgs]).panes ?? [];
 
     for (const tab of tabs) {
       const owned =
@@ -129,6 +167,7 @@ function main() {
 try {
   main();
 } catch (error) {
-  console.error(`auto-tab-name: ${error.message ?? error}`);
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`auto-tab-name: ${message}`);
   process.exit(1);
 }

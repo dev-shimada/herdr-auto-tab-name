@@ -30,8 +30,13 @@ the `sync` action to refresh immediately, or source the optional
 ## Requirements
 
 - herdr `>= 0.7.0`
-- [Node.js](https://nodejs.org/) 18 or newer on your `PATH` (the plugin is a
-  single dependency-free script; there is no build step)
+- [Node.js](https://nodejs.org/) 22.18 or newer on your `PATH`
+
+The plugin is a single dependency-free TypeScript file that Node runs directly
+via [type stripping](https://nodejs.org/api/typescript.html) — there is no
+build step, and the code you review is exactly the code that runs. Node 24+
+runs it silently; 22.18–23.5 prints a one-line experimental warning to the
+plugin log, which is harmless.
 
 ## Install
 
@@ -109,6 +114,14 @@ git clone https://github.com/dev-shimada/herdr-auto-tab-name
 herdr plugin link ./herdr-auto-tab-name
 herdr plugin action invoke dev-shimada.auto-tab-name.sync
 herdr plugin log list --plugin dev-shimada.auto-tab-name
+```
+
+The logic lives in `sync.mts`. Type checking is dev-only tooling
+(`package.json` / `tsconfig.json` play no part at install or run time):
+
+```bash
+npm install
+npm run check   # tsc --noEmit with erasableSyntaxOnly
 ```
 
 State lives in `HERDR_PLUGIN_STATE_DIR/labels.json` (the labels the plugin
