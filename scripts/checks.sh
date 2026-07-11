@@ -2,10 +2,26 @@
 # The full check suite, shared by CI (.github/actions/checks) and the local
 # release script. Callers install dependencies (npm ci) first.
 #
+# Usage: scripts/checks.sh [--strict]
+#
 # Tools that may be missing on a developer machine (zsh, python3 with
-# tomllib) degrade to a warning locally; CI provisions them and always runs
-# every check.
+# tomllib) degrade to a warning by default. With --strict a missing tool is
+# an error — CI and scripts/release.sh use strict mode so nothing ships
+# partially validated.
 set -euo pipefail
+
+STRICT=0
+if [ "${1:-}" = "--strict" ]; then
+  STRICT=1
+fi
+
+missing_tool() {
+  if [ "$STRICT" = 1 ]; then
+    echo "error: $1 (required in strict mode)" >&2
+    exit 1
+  fi
+  echo "warning: $1; skipping (CI runs this check)" >&2
+}
 
 npm run check
 node tests/smoke.mjs
@@ -14,7 +30,7 @@ bash -n shell/hook.bash
 if command -v zsh >/dev/null 2>&1; then
   zsh -n shell/hook.zsh
 else
-  echo "warning: zsh not found; skipping hook.zsh syntax check (CI runs it)" >&2
+  missing_tool "zsh not found for hook.zsh syntax check"
 fi
 
 if python3 -c 'import tomllib' 2>/dev/null; then
@@ -43,5 +59,5 @@ assert pkg["version"] == manifest["version"], (
 print(f"manifest OK (version {manifest['version']})")
 EOF
 else
-  echo "warning: python3 with tomllib (3.11+) not found; skipping manifest validation (CI runs it)" >&2
+  missing_tool "python3 with tomllib (3.11+) not found for manifest validation"
 fi

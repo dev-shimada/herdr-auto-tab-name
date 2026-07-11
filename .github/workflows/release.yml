@@ -41,8 +41,13 @@ jobs:
 
           VERSION="${GITHUB_REF_NAME#v}"
           MANIFEST="$(node -e '
-            const m = require("node:fs").readFileSync("herdr-plugin.toml", "utf8").match(/^version = "(.*)"$/m);
-            process.stdout.write(m ? m[1] : "");
+            const toml = require("node:fs").readFileSync("herdr-plugin.toml", "utf8");
+            const m = toml.match(/^\s*version\s*=\s*"([^"]*)"/m);
+            if (!m) {
+              console.error("could not parse the version field from herdr-plugin.toml");
+              process.exit(1);
+            }
+            process.stdout.write(m[1]);
           ')"
           if [ "$MANIFEST" != "$VERSION" ]; then
             echo "::error::herdr-plugin.toml version ($MANIFEST) does not match tag $GITHUB_REF_NAME. Cut releases with scripts/release.sh instead of tagging manually."
